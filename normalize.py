@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 def __getDetector():
     # return cv2.ORB_create()
     return cv2.AKAZE_create()
+    # return cv2.BRISK_create()
 
 def __calcKpAndDes(imgName, mask = None):
     img = cv2.imread(imgName, 0)
@@ -18,8 +19,10 @@ def showImg(img):
     plt.imshow(img),plt.show()
 
 def drawKp(img, kp):
-    img = cv2.drawKeypoints(img, kp, outImage = None, color = (0, 255, 255))
-    plt.imshow(img),plt.show()
+    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    img = cv2.drawKeypoints(img, kp, outImage = None, color = (0, 0, 255))
+    # plt.imshow(img),plt.show()
+    return img
 
 def getBoardMask():
     # サイズから空イメージ作れればいい
@@ -33,7 +36,7 @@ def getBoardMask():
     return boardImg
 
 def drawMatches(img1, kp1, img2, kp2, matches):
-    img = cv2.drawMatches(img1, kp1, img2, kp2, matches[:10], flags=2, outImg = None)
+    img = cv2.drawMatches(img1, kp1, img2, kp2, matches[:20], flags=2, outImg = None)
     plt.imshow(img),plt.show()
 
 def __doMatching(des1, des2):
@@ -56,6 +59,13 @@ def showBoardEdges(qImg, tImg, qPts, tPts):
     img = cv2.polylines(tImg,[np.int32(dst)],True,255,3, cv2.LINE_AA)
     showImg(img)
 
+def __getTurn(qPts, tPts, qImg):
+    M, _ = __findHomography(qPts, tPts)
+    h, w = qImg.shape
+    pts = np.float32([[w/2, 0], [w/2, h-1]]).reshape(-1,1,2)
+    dst = cv2.perspectiveTransform(pts, M)
+    return 1 if dst[0][0][1] < dst[1][0][1] else -1
+
 def normalizeImg(imgFile):
     query = 'pics/board.jpg'
     train = imgFile
@@ -68,13 +78,21 @@ def normalizeImg(imgFile):
     qPts, tPts = __getMatchedPts(qKp, tKp, matches)
     M, mask    = __findHomography(tPts, qPts)
 
+    # drawMatches(qImg, qKp, tImg, tKp, matches)
+    # exit()
+
     # TODO: 写像のサイズ (持ち駒判断)
     img = cv2.warpPerspective(tImg, M, tuple(np.array([qImg.shape[1], qImg.shape[0]])))
-    return img
+    return img, __getTurn(qPts, tPts, qImg)
 
-train = sys.argv[1]
+# train = sys.argv[1]
 
-img = normalizeImg(train)
-showImg(img)
+# img1, kp1, des1 = __calcKpAndDes('pics/board.jpg', getBoardMask())
+#img2, kp2, des2 = __calcKpAndDes(train)
+# drawMatches(img1, kp1, img2, kp2, __doMatching(des1, des2))
 
-# cv2.imwrite('result.png', img)
+#img = drawKp(img2, kp2)
+#img = normalizeImg(train)
+#showImg(img)
+# 
+#cv2.imwrite('result.png', img)
